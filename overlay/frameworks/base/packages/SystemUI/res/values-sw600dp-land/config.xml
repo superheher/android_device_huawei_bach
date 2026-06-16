@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Copyright 2017 The LineageOS Project
+    Copyright (C) 2024 The LineageOS Project
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,14 +15,6 @@
     limitations under the License.
 -->
 <resources>
-    <!-- Doze: does this device support STATE_DOZE and STATE_DOZE_SUSPEND?  -->
-    <bool name="doze_display_state_supported">true</bool>
-
-    <!-- QoL: 4 QuickSettings columns (this sw600dp tablet has the room) -->
+    <!-- QoL: keep 4 QuickSettings columns in landscape too (base sw600dp-land sets 3) -->
     <integer name="quick_settings_num_columns">4</integer>
-
-    <!-- QoL: ship the Heads-up toggle tile in the default layout (added "heads_up") -->
-    <string name="quick_settings_tiles_default" translatable="false">
-        wifi,bt,dnd,flashlight,rotation,battery,cell,airplane,cast,heads_up,screenrecord
-    </string>
 </resources>

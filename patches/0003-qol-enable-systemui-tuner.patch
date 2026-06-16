@@ -1,0 +1,13 @@
+diff --git a/packages/SystemUI/AndroidManifest.xml b/packages/SystemUI/AndroidManifest.xml
+index c536b6cb..af21df3f 100644
+--- a/packages/SystemUI/AndroidManifest.xml
++++ b/packages/SystemUI/AndroidManifest.xml
+@@ -363,7 +363,7 @@
+         </activity>
+ 
+         <activity android:name=".tuner.TunerActivity"
+-                  android:enabled="false"
++                  android:enabled="true"
+                   android:icon="@drawable/tuner"
+                   android:theme="@style/TunerSettings"
+                   android:label="@string/system_ui_tuner"

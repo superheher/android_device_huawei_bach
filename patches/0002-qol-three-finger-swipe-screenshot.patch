@@ -1,0 +1,228 @@
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index fe61bc37..a72bd983 100755
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -4004,6 +4004,12 @@ public final class Settings {
+          */
+         public static final String SCREEN_BRIGHTNESS_MODE = "screen_brightness_mode";
+ 
++        /**
++         * Whether a three-finger downward swipe takes a screenshot. 0 = off, 1 = on.
++         * @hide
++         */
++        public static final String THREE_FINGER_GESTURE = "three_finger_gesture";
++
+         /**
+          * Adjustment to auto-brightness to make it generally more (>0.0 <1.0)
+          * or less (<0.0 >-1.0) bright.
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 28724e2e..fc0f2c07 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -937,6 +937,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             resolver.registerContentObserver(LineageSettings.System.getUriFor(
+                     LineageSettings.System.CLICK_PARTIAL_SCREENSHOT), false, this,
+                     UserHandle.USER_ALL);
++            resolver.registerContentObserver(Settings.System.getUriFor(
++                    Settings.System.THREE_FINGER_GESTURE), false, this,
++                    UserHandle.USER_ALL);
+ 
+             updateSettings();
+         }
+@@ -1647,6 +1650,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+ 
+     private final ScreenshotRunnable mScreenshotRunnable = new ScreenshotRunnable();
+ 
++    // QoL: three-finger swipe-down screenshot gesture
++    private SwipeToScreenshotListener mSwipeToScreenshot;
++    private boolean haveEnableGesture = false;
++
+     @Override
+     public void showGlobalActions() {
+         mHandler.removeMessages(MSG_DISPATCH_SHOW_GLOBAL_ACTIONS);
+@@ -1789,6 +1796,19 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         mContext.sendBroadcast(intent, android.Manifest.permission.STATUS_BAR_SERVICE);
+     }
+ 
++    private void enableSwipeThreeFingerGesture(boolean enable) {
++        if (mWindowManagerFuncs == null || mSwipeToScreenshot == null) return;
++        if (enable) {
++            if (haveEnableGesture) return;
++            haveEnableGesture = true;
++            mWindowManagerFuncs.registerPointerEventListener(mSwipeToScreenshot, DEFAULT_DISPLAY);
++        } else {
++            if (!haveEnableGesture) return;
++            haveEnableGesture = false;
++            mWindowManagerFuncs.unregisterPointerEventListener(mSwipeToScreenshot, DEFAULT_DISPLAY);
++        }
++    }
++
+     private void triggerVirtualKeypress(final int keyCode) {
+         InputManager im = InputManager.getInstance();
+         long now = SystemClock.uptimeMillis();
+@@ -2056,6 +2076,13 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         }
+ 
+         mHandler = new PolicyHandler();
++        mSwipeToScreenshot = new SwipeToScreenshotListener(mContext,
++                new SwipeToScreenshotListener.Callbacks() {
++            @Override
++            public void onSwipeThreeFinger() {
++                mHandler.post(mScreenshotRunnable);
++            }
++        });
+         mWakeGestureListener = new MyWakeGestureListener(mContext, mHandler);
+         mSettingsObserver = new SettingsObserver(mHandler);
+ 
+@@ -2414,6 +2441,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             mTorchLongPressPowerEnabled = LineageSettings.System.getIntForUser(
+                     resolver, LineageSettings.System.TORCH_LONG_PRESS_POWER_GESTURE, 0,
+                     UserHandle.USER_CURRENT) == 1;
++
++            // QoL: three-finger swipe-down screenshot (default on)
++            boolean threeFingerGesture = Settings.System.getIntForUser(resolver,
++                    Settings.System.THREE_FINGER_GESTURE, 1, UserHandle.USER_CURRENT) == 1;
++            enableSwipeThreeFingerGesture(threeFingerGesture);
+             mTorchTimeout = LineageSettings.System.getIntForUser(
+                     resolver, LineageSettings.System.TORCH_LONG_PRESS_POWER_TIMEOUT, 0,
+                     UserHandle.USER_CURRENT);
+diff --git a/services/core/java/com/android/server/policy/SwipeToScreenshotListener.java b/services/core/java/com/android/server/policy/SwipeToScreenshotListener.java
+new file mode 100644
+index 00000000..7a9bb155
+--- /dev/null
++++ b/services/core/java/com/android/server/policy/SwipeToScreenshotListener.java
+@@ -0,0 +1,134 @@
++/*
++ * Copyright (C) 2019 The PixelExperience Project
++ * Copyright (C) 2024 The LineageOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.policy;
++
++import android.content.Context;
++import android.os.SystemProperties;
++import android.provider.Settings;
++import android.util.DisplayMetrics;
++import android.view.MotionEvent;
++import android.view.WindowManagerPolicyConstants.PointerEventListener;
++
++public class SwipeToScreenshotListener implements PointerEventListener {
++    private static final int THREE_GESTURE_STATE_NONE = 0;
++    private static final int THREE_GESTURE_STATE_DETECTING = 1;
++    private static final int THREE_GESTURE_STATE_DETECTED_FALSE = 2;
++    private static final int THREE_GESTURE_STATE_DETECTED_TRUE = 3;
++    private static final int THREE_GESTURE_STATE_NO_DETECT = 4;
++    private boolean mBootCompleted;
++    private Context mContext;
++    private boolean mDeviceProvisioned = false;
++    private float[] mInitMotionY;
++    private int[] mPointerIds;
++    private int mThreeGestureState = THREE_GESTURE_STATE_NONE;
++    private int mThreeGestureThreshold;
++    private int mThreshold;
++    private final Callbacks mCallbacks;
++    DisplayMetrics mDisplayMetrics;
++
++    public SwipeToScreenshotListener(Context context, Callbacks callbacks) {
++        mPointerIds = new int[3];
++        mInitMotionY = new float[3];
++        mContext = context;
++        mCallbacks = callbacks;
++        mDisplayMetrics = mContext.getResources().getDisplayMetrics();
++        mThreshold = (int) (50.0f * mDisplayMetrics.density);
++        mThreeGestureThreshold = mThreshold * 3;
++    }
++
++    @Override
++    public void onPointerEvent(MotionEvent event) {
++        if (!mBootCompleted) {
++            mBootCompleted = SystemProperties.getBoolean("sys.boot_completed", false);
++            return;
++        }
++        if (!mDeviceProvisioned) {
++            mDeviceProvisioned = Settings.Global.getInt(mContext.getContentResolver(),
++                Settings.Global.DEVICE_PROVISIONED, 0) != 0;
++            return;
++        }
++        if (event.getAction() == MotionEvent.ACTION_DOWN) {
++            mThreeGestureState = THREE_GESTURE_STATE_NONE;
++        } else if (mThreeGestureState == THREE_GESTURE_STATE_NONE && event.getPointerCount() == 3) {
++            if (checkIsStartThreeGesture(event)) {
++                mThreeGestureState = THREE_GESTURE_STATE_DETECTING;
++                for (int i = 0; i < 3; i++) {
++                    mPointerIds[i] = event.getPointerId(i);
++                    mInitMotionY[i] = event.getY(i);
++                }
++            } else {
++                mThreeGestureState = THREE_GESTURE_STATE_NO_DETECT;
++            }
++        }
++        if (mThreeGestureState == THREE_GESTURE_STATE_DETECTING) {
++            if (event.getPointerCount() != 3) {
++                mThreeGestureState = THREE_GESTURE_STATE_DETECTED_FALSE;
++                return;
++            }
++            if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
++                float distance = 0.0f;
++                int i = 0;
++                while (i < 3) {
++                    int index = event.findPointerIndex(mPointerIds[i]);
++                    if (index < 0 || index >= 3) {
++                        mThreeGestureState = THREE_GESTURE_STATE_DETECTED_FALSE;
++                        return;
++                    } else {
++                        distance += event.getY(index) - mInitMotionY[i];
++                        i++;
++                    }
++                }
++                if (distance >= ((float) mThreeGestureThreshold)) {
++                    mThreeGestureState = THREE_GESTURE_STATE_DETECTED_TRUE;
++                    mCallbacks.onSwipeThreeFinger();
++                }
++            }
++        }
++    }
++
++    private boolean checkIsStartThreeGesture(MotionEvent event) {
++        if (event.getEventTime() - event.getDownTime() > 500) {
++            return false;
++        }
++        int height = mDisplayMetrics.heightPixels;
++        int width = mDisplayMetrics.widthPixels;
++        float minX = Float.MAX_VALUE;
++        float maxX = Float.MIN_VALUE;
++        float minY = Float.MAX_VALUE;
++        float maxY = Float.MIN_VALUE;
++        for (int i = 0; i < event.getPointerCount(); i++) {
++            float x = event.getX(i);
++            float y = event.getY(i);
++            if (y > ((float) (height - mThreshold))) {
++                return false;
++            }
++            maxX = Math.max(maxX, x);
++            minX = Math.min(minX, x);
++            maxY = Math.max(maxY, y);
++            minY = Math.min(minY, y);
++        }
++        if (maxY - minY <= mDisplayMetrics.density * 150.0f) {
++            return maxX - minX <= ((float) (width < height ? width : height));
++        }
++        return false;
++    }
++
++    interface Callbacks {
++        void onSwipeThreeFinger();
++    }
++}

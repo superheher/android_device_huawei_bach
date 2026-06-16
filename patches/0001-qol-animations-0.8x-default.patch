@@ -1,0 +1,17 @@
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index 03b22e52..79b1c586 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -939,9 +939,9 @@ public class WindowManagerService extends IWindowManager.Stub
+     PowerManager mPowerManager;
+     PowerManagerInternal mPowerManagerInternal;
+ 
+-    private float mWindowAnimationScaleSetting = 1.0f;
+-    private float mTransitionAnimationScaleSetting = 1.0f;
+-    private float mAnimatorDurationScaleSetting = 1.0f;
++    private float mWindowAnimationScaleSetting = 0.8f;
++    private float mTransitionAnimationScaleSetting = 0.8f;
++    private float mAnimatorDurationScaleSetting = 0.8f;
+     private boolean mAnimationsDisabled = false;
+     boolean mPointerLocationEnabled = false;
+ 

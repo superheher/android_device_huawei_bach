@@ -48,7 +48,7 @@ the kernel ships prebuilt.
    <manifest>
      <remote name="superheher" fetch="https://github.com/superheher" />
      <project name="android_device_huawei_bach" path="device/huawei/bach" remote="superheher" revision="eleven" />
-     <project name="android_kernel_huawei_bach" path="kernel/huawei/bach" remote="superheher" revision="eleven" />
+     <project name="android_kernel_huawei_bach" path="kernel/huawei/bach" remote="superheher" revision="eleven-cve" />
    </manifest>
    ```
    then `repo sync`.

@@ -31,7 +31,7 @@ the kernel ships prebuilt.
 | Boot / system / UI | stable daily driver |
 | **Cameras (rear + front)** | live preview + **8 MP stills** + **1080p/30 video**, via the bundled **Open Camera** (needs the kernel fix + stats-blob patch + `/vendor` overlays below) |
 | Wi-Fi / Bluetooth / sensors / touch | working |
-| Audio | working, but speaker is **harsh at high volume** (uncalibrated TI TAS2560 smart-amps on a generic config) |
+| Audio | working (incl. speaker — the harsh-at-high-volume issue seen on older builds is not present on this A11 build) |
 
 **Caveats**
 - **SELinux is permissive** (`androidboot.selinux=permissive` in the kernel cmdline) — a bring-up
@@ -63,8 +63,8 @@ the kernel ships prebuilt.
 
 **App vs. stack:** the fixes here are at the camera **stack** level (kernel + HAL/daemon), so any
 app benefits. But the stock LineageOS camera app is too strict for this old HAL — it won't even
-preview — so **[Open Camera](https://opencamera.org.uk/) (FOSS) is bundled and is the recommended
-camera** (set it as default on first launch; the stock app is kept but does not work well here).
+preview — so **[Open Camera](https://opencamera.org.uk/) (FOSS) is bundled as the camera app** and
+replaces the stock one (via `LOCAL_OVERRIDES_PACKAGES`), so it's the sole, default camera.
 
 The closed **A8.1/A10** camera stack runs under A11 strict-Treble (on the reused A10 `/vendor`)
 via a chain of `/vendor` overlays plus two original fixes. Full write-up, exact files and

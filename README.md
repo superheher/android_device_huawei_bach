@@ -1,6 +1,6 @@
 # LineageOS 18.1 (Android 11) — Huawei MediaPad M3 Lite 10 (`bach`)
 
-World-first **Android 11** port for `bach` (BAH-AL00 / L01 / L09 / W09), built on
+Unofficial **Android 11** port for `bach` (BAH-AL00 / L01 / L09 / W09), built on
 **surdu_petru**'s LineageOS 17.1 ([Huawei-Dev](https://github.com/Huawei-Dev)). Branch: **`eleven`**.
 
 > **Developer-stage port.** Boots and runs as a daily driver; all three camera functions work
@@ -29,7 +29,7 @@ the kernel ships prebuilt.
 | Area | State |
 |---|---|
 | Boot / system / UI | stable daily driver |
-| **Cameras (rear + front)** | live preview + **8 MP stills** + **1080p/30 video** — needs the kernel fix + the stats-blob patch + the `/vendor` overlays below |
+| **Cameras (rear + front)** | live preview + **8 MP stills** + **1080p/30 video**, via the bundled **Open Camera** (needs the kernel fix + stats-blob patch + `/vendor` overlays below) |
 | Wi-Fi / Bluetooth / sensors / touch | working |
 | Audio | working, but speaker is **harsh at high volume** (uncalibrated TI TAS2560 smart-amps on a generic config) |
 
@@ -59,7 +59,12 @@ the kernel ships prebuilt.
 3. Flash `system` + `boot` over an existing LOS 17.1 install, then apply the camera `/vendor`
    overlays + the stats-blob patch — see **[docs/CAMERA.md](docs/CAMERA.md)**.
 
-## Camera — world-first on A11 (the hard part)
+## Camera (the hard part)
+
+**App vs. stack:** the fixes here are at the camera **stack** level (kernel + HAL/daemon), so any
+app benefits. But the stock LineageOS camera app is too strict for this old HAL — it won't even
+preview — so **[Open Camera](https://opencamera.org.uk/) (FOSS) is bundled and is the recommended
+camera** (set it as default on first launch; the stock app is kept but does not work well here).
 
 The closed **A8.1/A10** camera stack runs under A11 strict-Treble (on the reused A10 `/vendor`)
 via a chain of `/vendor` overlays plus two original fixes. Full write-up, exact files and

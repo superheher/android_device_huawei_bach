@@ -52,3 +52,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # VNDK-29 vendor runs old HALs; keep AOSP vendor-allowed property space sane
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.vendor.qti.va_aosp.support=1
+
+# Camera app (stock LOS camera too strict for this HAL)
+PRODUCT_PACKAGES += \
+    OpenCamera

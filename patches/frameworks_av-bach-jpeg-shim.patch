@@ -1,0 +1,38 @@
+diff --git a/services/camera/libcameraservice/device3/Camera3OutputUtils.cpp b/services/camera/libcameraservice/device3/Camera3OutputUtils.cpp
+index 08cde5d..7d2592b 100644
+--- a/services/camera/libcameraservice/device3/Camera3OutputUtils.cpp
++++ b/services/camera/libcameraservice/device3/Camera3OutputUtils.cpp
+@@ -32,6 +32,8 @@
+ 
+ #include <inttypes.h>
+ 
++#include <cutils/properties.h>
++#include <system/graphics.h>
+ #include <utils/Log.h>
+ #include <utils/SortedVector.h>
+ #include <utils/Trace.h>
+@@ -809,6 +811,24 @@ void returnOutputBuffers(
+         Camera3StreamInterface *stream = Camera3Stream::cast(outputBuffers[i].stream);
+         int streamId = stream->getId();
+ 
++        // [BACH] The A10 QCamera HAL on bach encodes a valid JPEG but returns the BLOB gralloc
++        // buffer with STATUS_ERROR, so A11 would drop it (notifyError ERROR_CAMERA_BUFFER) and
++        // the app would never receive the image ("capture error on unknown request ID"). Trust
++        // the encoded JPEG: flip a BLOB buffer's ERROR status back to OK so it is delivered to the
++        // app's output surface. Pairs with the kernel msm_isp_axi_util VER2 req_frm fix that fills
++        // the snapshot buffer with real ISP data. Default on; set persist.bach.jpeg.shim=0 to off.
++        if (outputBuffers[i].status == CAMERA3_BUFFER_STATUS_ERROR &&
++                stream->getFormat() == HAL_PIXEL_FORMAT_BLOB &&
++                outputBuffers[i].buffer != nullptr &&
++                listener != nullptr &&
++                property_get_bool("persist.bach.jpeg.shim", true)) {
++            ALOGI("BACH: delivering BLOB streamId=%d frame=%" PRId64
++                  " despite HAL STATUS_ERROR (trusting encoded JPEG)",
++                  streamId, inResultExtras.frameNumber);
++            const_cast<camera3_stream_buffer_t&>(outputBuffers[i]).status =
++                    CAMERA3_BUFFER_STATUS_OK;
++        }
++
+         // Call notify(ERROR_BUFFER) if necessary.
+         if (outputBuffers[i].status == CAMERA3_BUFFER_STATUS_ERROR &&
+                 errorBufStrategy == ERROR_BUF_RETURN_NOTIFY) {

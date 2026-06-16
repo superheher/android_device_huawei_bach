@@ -8,6 +8,9 @@ LOCAL_MODULE := OpenCamera
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := APPS
 LOCAL_MODULE_SUFFIX := $(COMMON_ANDROID_PACKAGE_SUFFIX)
+# Install to system_ext (same partition as the stock Camera2 priv-app) so
+# LOCAL_OVERRIDES_PACKAGES reliably drops it.
+LOCAL_SYSTEM_EXT_MODULE := true
 LOCAL_SRC_FILES := OpenCamera.apk
 LOCAL_CERTIFICATE := PRESIGNED
 LOCAL_DEX_PREOPT := false

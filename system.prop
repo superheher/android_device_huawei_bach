@@ -1,0 +1,6 @@
+# bach: ro.zygote was not emitted by the build for this A11 port (core_64_bit did not
+# set it), so init expanded `import /system/etc/init/hw/init.${ro.zygote}.rc` to nothing
+# → no zygote service → boot hung forever at the LineageOS animation (surfaceflinger ran,
+# system_server never forked). TARGET_SYSTEM_PROP forces it into /system/build.prop,
+# which init's property_load_boot_defaults() reads before parsing init.rc.
+ro.zygote=zygote64_32

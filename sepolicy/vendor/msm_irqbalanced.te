@@ -1,1 +1,0 @@
-allow msm_irqbalanced vendor_file:dir { read };

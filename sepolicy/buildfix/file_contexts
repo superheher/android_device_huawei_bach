@@ -1,0 +1,11 @@
+# build2: rootfs labels for bach's root mount points / symlinks (and anything nested under
+# them, via (/.*)? ), so e2fsdroid can label them when assembling the system-as-root image.
+# The bach vendor sepolicy that originally labeled these was dropped for the A13 forward-port.
+# NOTE: /dsp is intentionally omitted — the platform already labels /dsp(/.*)? as adsprpcd_file
+# (adding it here would be a checkfc "multiple different specifications" conflict).
+/cust(/.*)?         u:object_r:rootfs:s0
+/firmware(/.*)?     u:object_r:rootfs:s0
+/persist(/.*)?      u:object_r:rootfs:s0
+/log(/.*)?          u:object_r:rootfs:s0
+/produce(/.*)?      u:object_r:rootfs:s0
+/version(/.*)?      u:object_r:rootfs:s0

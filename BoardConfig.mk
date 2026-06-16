@@ -99,7 +99,12 @@ BOARD_QTI_CAMERA_32BIT_ONLY := true
 USE_DEVICE_SPECIFIC_CAMERA := true
 TARGET_USES_QTI_CAMERA_DEVICE := true
 TARGET_USES_QTI_CAMERA2CLIENT := true
-TARGET_TS_MAKEUP := true
+# ThunderSoft face-beautify (libts_*_hal) are prebuilt blobs not declared as
+# build modules; disabled for the A11 from-source HAL build (non-essential).
+TARGET_TS_MAKEUP := false
+# A11 from-source HAL: build camera3 (HAL3) path only — the camera2 framework/app
+# uses device@3.x; HAL1 is a large extra surface (legacy API1) deferred for now.
+TARGET_SUPPORT_HAL1 := false
 TARGET_PROCESS_SDK_VERSION_OVERRIDE := \
 	/vendor/bin/mm-qcamera-daemon=24
 
@@ -153,21 +158,24 @@ DEVICE_MANIFEST_FILE := $(VENDOR_PATH)/prebuilts/manifest.xml
 DEVICE_MATRIX_FILE := $(VENDOR_PATH)/prebuilts/compatibility_matrix.xml
 
 # Init
-TARGET_INIT_VENDOR_LIB := //$(VENDOR_PATH):libinit_bach
-TARGET_RECOVERY_DEVICE_MODULES := libinit_bach
+# libinit_bach disabled for build #1 (A10-era API)
 
 # Kernel
 BOARD_KERNEL_BASE := 0x80000000
 BOARD_KERNEL_PAGESIZE := 2048
-BOARD_KERNEL_CMDLINE := androidboot.hardware=qcom ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci lpm_levels.sleep_disabled=1 slub_min_objects=12
+BOARD_KERNEL_CMDLINE := androidboot.hardware=qcom ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci lpm_levels.sleep_disabled=1 slub_min_objects=12 androidboot.selinux=permissive
 BOARD_KERNEL_CMDLINE += loop.max_part=7
 BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x01000000
 TARGET_KERNEL_ARCH := arm64
 TARGET_KERNEL_HEADER_ARCH := arm64
 BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb
-TARGET_KERNEL_SOURCE := kernel/huawei/bach
+# Build #1: prebuilt kernel from surdu's LOS17 boot.img (source build comes later)
+TARGET_PREBUILT_KERNEL := device/huawei/bach/prebuilt/Image.gz-dtb
+TARGET_NO_KERNEL := false
+# Kernel source (symlinked at kernel/huawei/bach -> los20/kernel-src) is present
+# so the camera stack can pull generated_kernel_headers (msm camera UAPI). This
+# drives defconfig + headers_install; the boot image still uses the prebuilt above.
 TARGET_KERNEL_CONFIG := bach_defconfig
-TARGET_COMPILE_WITH_MSM_KERNEL := true
 
 # Malloc
 MALLOC_SVELTE := true
@@ -203,7 +211,9 @@ TARGET_RECOVERY_FSTAB := $(VENDOR_PATH)/rootdir/fstab.qcom
 TARGET_PROVIDES_QTI_TELEPHONY_JAR := true
 TARGET_USES_OLD_MNC_FORMAT := true
 
-# Root
+# Root (build2: restored WITH rootfs labels via sepolicy/buildfix/file_contexts.
+# In build1 these were stripped because they were unlabeled in the system file_contexts
+# (bach vendor sepolicy dropped) → e2fsdroid "searching for label /cust" then /firmware.)
 BOARD_ROOT_EXTRA_FOLDERS += \
     cust \
     log \
@@ -215,24 +225,44 @@ BOARD_ROOT_EXTRA_SYMLINKS += \
     /mnt/vendor/persist:/persist \
     /vendor/dsp:/dsp
 
+# ---- Android 11 (LOS18.1) forward-port ----
+BOARD_VNDK_VERSION := current
+BOARD_SHIPPING_API_LEVEL := 25
+PRODUCT_FULL_TREBLE_OVERRIDE := true
+BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
+BUILD_BROKEN_USES_BUILD_COPY_HEADERS := true
+# system+boot only: existing device vendor (A10, vndk29) stays untouched
+# ---------------------------------------------
+
+# bach: force ro.zygote=zygote64_32 into /system/build.prop (the build didn't emit it;
+# without it init imports nothing for zygote → boot hangs at the LOS animation forever).
+TARGET_SYSTEM_PROP := device/huawei/bach/system.prop
+
 # SELinux
-include device/qcom/sepolicy-legacy-um/sepolicy.mk
-BOARD_PLAT_PRIVATE_SEPOLICY_DIR += $(VENDOR_PATH)/sepolicy/private
-BOARD_SEPOLICY_DIRS += $(VENDOR_PATH)/sepolicy/vendor
+include device/qcom/sepolicy-legacy-um/SEPolicy.mk
+# build2: minimal private sepolicy dir = ONLY file_contexts (rootfs labels for the bach
+# root mount points). No .te, so it avoids the gallery_app types that got the old private
+# dir dropped. Lets e2fsdroid label /cust,/firmware,/dsp,/persist,/log,/produce,/version.
+# A11 (lineage-18.1) uses BOARD_PLAT_PRIVATE_SEPOLICY_DIR (renamed to
+# SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS only in A12+); system/sepolicy/Android.mk maps it to
+# SYSTEM_EXT_PRIVATE_POLICY. Append our file_contexts-only buildfix dir.
+BOARD_PLAT_PRIVATE_SEPOLICY_DIR += device/huawei/bach/sepolicy/buildfix
+# build1: private sepolicy dropped (gallery_app & co. not in LOS20)
+# build1: bach vendor sepolicy dropped (LOS17-internal types; device keeps its own vendor-partition policy)
 SELINUX_IGNORE_NEVERALLOWS := true
 
-# Shims
+# Shims (vendor-lib only). NOTE: the LOS linker injects shims per-NAMESPACE at load
+# time (bionic/linker/linker.cpp, -DLD_SHIM_LIBS). Shimming a SYSTEM lib that loads in
+# many namespaces (libcutils, libui) is fatal on this GSI-style A11 port: restricted
+# APEX namespaces (e.g. com_android_adbd) can't see /system/lib*/libshim_*.so, so
+# system_server died at SystemServer.run() loading libandroid_servers -> libcutils.
+# Those system shims only served Huawei vendor blobs, which use VNDK libcutils/libui
+# (not /system), so they were useless here AND crashed boot. Removed 2026-06-15.
 TARGET_LD_SHIM_LIBS += \
     /vendor/lib64/hw/fingerprint.hw.ex.so|libshim_fps.so \
     /vendor/lib/libmmcamera_ppeiscore.so|libshim_camera.so \
-    /system/lib/libcutils.so|libshim_cutils.so \
-    /system/lib64/libcutils.so|libshim_cutils.so \
     /vendor/lib/libhwlog.so|libshim_hwlog.so \
     /vendor/lib64/libhwlog.so|libshim_hwlog.so
-
-TARGET_LD_SHIM_LIBS += \
-    /system/lib/libui.so|libshim_ui.so \
-    /system/lib64/libui.so|libshim_ui.so
 
 # Thermal
 TARGET_USES_CUSTOM_THERMAL := true

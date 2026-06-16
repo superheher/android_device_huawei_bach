@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# bach lineage-20 forward-port, build #1: SYSTEM+BOOT ONLY.
+# bach LineageOS 18.1 (Android 11) — system+boot only.
 # The tablet keeps its existing LOS 17.1 /vendor (vndk 29) and 3.18 kernel
 # (shipped prebuilt). Vendor-side packages return in the vendor-takeover phase.
 #

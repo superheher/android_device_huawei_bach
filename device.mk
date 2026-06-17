@@ -21,8 +21,10 @@ PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_AAPT_CONFIG := normal large xlarge hdpi xhdpi
 PRODUCT_AAPT_PREF_CONFIG := xhdpi
 
-# Dalvik heap (3 GB device)
-$(call inherit-product, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
+# Dalvik heap (3 GB device): set in device/huawei/bach/system.prop, which the build
+# auto-appends to /system/build.prop. NOT via the standard dalvik-heap.mk inherit or
+# PRODUCT_PROPERTY_OVERRIDES — those land in /vendor/build.prop on this tree, which the
+# prebuilt A10 vendor.img overwrites, so ART would clamp to ~16 MB and heavy apps OOM.
 
 # A13-on-legacy bridge
 PRODUCT_SHIPPING_API_LEVEL := 25

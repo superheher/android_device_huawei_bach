@@ -4,3 +4,14 @@
 # system_server never forked). TARGET_SYSTEM_PROP forces it into /system/build.prop,
 # which init's property_load_boot_defaults() reads before parsing init.rc.
 ro.zygote=zygote64_32
+
+# ART Dalvik heap — set here (auto-appended to /system/build.prop) rather than via
+# PRODUCT_PROPERTY_OVERRIDES / the dalvik-heap.mk inherit, which land in /vendor/build.prop on
+# this tree and get overwritten by the prebuilt A10 vendor.img. Without these ART clamps to
+# ~16 MB and heavy apps (Telegram, browsers) OOM at launch. 3 GB device → 192m growth, 512m largeHeap.
+dalvik.vm.heapstartsize=8m
+dalvik.vm.heapgrowthlimit=192m
+dalvik.vm.heapsize=512m
+dalvik.vm.heaptargetutilization=0.75
+dalvik.vm.heapminfree=512k
+dalvik.vm.heapmaxfree=8m

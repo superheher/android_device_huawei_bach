@@ -83,13 +83,9 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # Dalvik
 PRODUCT_PROPERTY_OVERRIDES += \
     dalvik.vm.dex2oat-filter=speed \
-    dalvik.vm.image-dex2oat-filter=speed \
-    dalvik.vm.heapstartsize=8m \
-    dalvik.vm.heapgrowthlimit=384m \
-    dalvik.vm.heapsize=512m \
-    dalvik.vm.heaptargetutilization=0.75 \
-    dalvik.vm.heapminfree=512k \
-    dalvik.vm.heapmaxfree=8m
+    dalvik.vm.image-dex2oat-filter=speed
+# heap props moved to device.mk PRODUCT_SYSTEM_PROPERTIES (these routed to /vendor here,
+# which the prebuilt A10 vendor.img overwrites; also conflicted with the inherit at 384m vs 192m)
 
 # Display
 PRODUCT_PROPERTY_OVERRIDES += \

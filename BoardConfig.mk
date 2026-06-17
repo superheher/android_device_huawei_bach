@@ -260,6 +260,7 @@ SELINUX_IGNORE_NEVERALLOWS := true
 # (not /system), so they were useless here AND crashed boot. Removed 2026-06-15.
 TARGET_LD_SHIM_LIBS += \
     /vendor/lib64/hw/fingerprint.hw.ex.so|libshim_fps.so \
+    /vendor/lib64/hw/fingerprint.msm8937.so|libshim_fps.so \
     /vendor/lib/libmmcamera_ppeiscore.so|libshim_camera.so \
     /vendor/lib/libhwlog.so|libshim_hwlog.so \
     /vendor/lib64/libhwlog.so|libshim_hwlog.so

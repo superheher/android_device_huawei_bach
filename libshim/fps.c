@@ -19,5 +19,20 @@ void _ZN7android16IKeystoreService11asInterfaceERKNS_2spINS_7IBinderEEE()
     return;
 }
 
+/*
+ * Huawei liblog power-logging extension imported by the closed
+ * fingerprint.msm8937.so blob; absent from AOSP liblog, so the fps_hal
+ * process crash-loops with "cannot locate symbol __android_logPower_print".
+ * It is diagnostic-only, so a no-op stub satisfies the dynamic linker and
+ * lets the fingerprint HAL load and run.
+ */
+int __android_logPower_print(int prio, const char* tag, const char* fmt, ...)
+{
+    (void)prio;
+    (void)tag;
+    (void)fmt;
+    return 0;
+}
+
 
 

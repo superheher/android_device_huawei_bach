@@ -33,7 +33,7 @@ the kernel ships prebuilt.
 | Boot / system / UI | stable daily driver |
 | **Cameras (rear + front)** | live preview + **8 MP stills** + **1080p/30 video**, via the bundled **Open Camera** (needs the kernel fix + stats-blob patch + `/vendor` overlays below) |
 | Wi-Fi / Bluetooth / sensors / touch | working |
-| Audio | working (incl. speaker — the harsh-at-high-volume issue seen on older builds is not present on this A11 build) |
+| Audio | working. **Speaker:** a clean flash has the raw harsh-at-high-volume treble — the de-harsh fix is a separate rootless app (BachSpeakerEQ), **not yet bundled** in the ROM, so it must be installed and is wiped by a clean reflash. |
 
 **Caveats**
 - **SELinux is permissive** (`androidboot.selinux=permissive` in the kernel cmdline) — a bring-up

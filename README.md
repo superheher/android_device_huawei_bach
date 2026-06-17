@@ -1,5 +1,7 @@
 # LineageOS 18.1 (Android 11) — Huawei MediaPad M3 Lite 10 (`bach`)
 
+[![GitHub all releases](https://img.shields.io/github/downloads/superheher/android_device_huawei_bach/total?label=downloads&logo=github&color=success)](https://github.com/superheher/android_device_huawei_bach/releases)
+
 Unofficial **Android 11** port for `bach` (BAH-AL00 / L01 / L09 / W09), built on
 **surdu_petru**'s LineageOS 17.1 ([Huawei-Dev](https://github.com/Huawei-Dev)). Branch: **`eleven`**.
 

@@ -132,6 +132,7 @@ on property:vendor.ims.QMI_DAEMON_STATUS=1
     start vendor.imsdatadaemon
 
 service vendor.ims_rtp_daemon /vendor/bin/ims_rtp_daemon
+   disabled
    class main
    user radio
    group radio vendor_qti_diag inet log

@@ -46,13 +46,13 @@ static struct target_therm_cfg sensor_cfg_msm8937[] = {
         .type = DEVICE_TEMPERATURE_CPU,
         .sensor_list = cpu_sensors_msm8937,
         .sens_cnt = ARRAY_SIZE(cpu_sensors_msm8937),
-        .mult = 0.1,
+        .mult = 1.0,
     },
     {
         .type = DEVICE_TEMPERATURE_GPU,
         .sensor_list = &misc_sensors_msm8937[0],
         .sens_cnt = 1,
-        .mult = 0.1,
+        .mult = 1.0,
         .label = "GPU",
     }
 };

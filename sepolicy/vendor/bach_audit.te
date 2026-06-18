@@ -1,0 +1,13 @@
+# Allow rules for the SELinux denials surfaced when testing enforcing for the -user
+# build (post-release audit, 2026-06-18). An active-use test (settings/camera/firefox/
+# aurora) under `setenforce 1` produced only 3 distinct denials; these resolve the two
+# legitimate vendor ones. The third (untrusted_app -> sysfs_kgsl:dir search, a Firefox
+# GPU-sysfs probe that has a software fallback) is left denied intentionally.
+
+# Camera: the reused A10 vendor camera path has vndservicemanager pass a binder reference
+# to cameraserver during camera bring-up (seen 49x during a camera launch under enforcing).
+# No neverallow forbids this direction (checked against the platform policy).
+allow vndservicemanager cameraserver:binder transfer;
+
+# Huawei sensors HAL writes calibration to the oeminfo socket.
+allow hal_sensors_default hwoeminfo_socket:sock_file write;

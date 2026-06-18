@@ -163,7 +163,7 @@ DEVICE_MATRIX_FILE := $(VENDOR_PATH)/prebuilts/compatibility_matrix.xml
 # Kernel
 BOARD_KERNEL_BASE := 0x80000000
 BOARD_KERNEL_PAGESIZE := 2048
-BOARD_KERNEL_CMDLINE := androidboot.hardware=qcom ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci lpm_levels.sleep_disabled=1 slub_min_objects=12 androidboot.selinux=permissive
+BOARD_KERNEL_CMDLINE := androidboot.hardware=qcom ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci lpm_levels.sleep_disabled=1 slub_min_objects=12 androidboot.selinux=enforcing
 BOARD_KERNEL_CMDLINE += loop.max_part=7
 BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x01000000
 TARGET_KERNEL_ARCH := arm64
@@ -249,7 +249,7 @@ include device/qcom/sepolicy-legacy-um/SEPolicy.mk
 BOARD_PLAT_PRIVATE_SEPOLICY_DIR += device/huawei/bach/sepolicy/buildfix
 # build1: private sepolicy dropped (gallery_app & co. not in LOS20)
 # build1: bach vendor sepolicy dropped (LOS17-internal types; device keeps its own vendor-partition policy)
-SELINUX_IGNORE_NEVERALLOWS := true
+# SELINUX_IGNORE_NEVERALLOWS := true  # removed — resolving the actual neverallow violations to allow a -user build
 
 # Shims (vendor-lib only). NOTE: the LOS linker injects shims per-NAMESPACE at load
 # time (bionic/linker/linker.cpp, -DLD_SHIM_LIBS). Shimming a SYSTEM lib that loads in
@@ -291,3 +291,4 @@ WPA_SUPPLICANT_VERSION := VER_0_8_X
 
 # Inherit the common proprietary files
 -include vendor/huawei/bach/BoardConfigVendor.mk
+

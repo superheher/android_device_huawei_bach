@@ -14,6 +14,14 @@
 # limitations under the License.
 #
 
+# !! DEAD FILE — nothing below reaches a device. Two independent reasons:
+#   1. No makefile inherits vendor_prop.mk (zero call sites in this tree).
+#   2. PRODUCT_PROPERTY_OVERRIDES land in /vendor/build.prop, which bach's
+#      PREBUILT A10 vendor.img overwrites wholesale — the trap that dropped the
+#      ART heap and GLES props (see device.mk, system.prop).
+# Real routes: system-context props -> system.prop; vendor-context props ->
+# vendor-fix/build_vendor_fixed.sh. Kept as a record of the upstream set.
+
 # Audio
 PRODUCT_PROPERTY_OVERRIDES += \
     af.fast_track_multiplier=1 \
@@ -130,6 +138,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
     persist.dbg.vt_avail_ovr=1
 
 # Media
+# vendor.vidc.disable.split.mode=1 below is REAL and REQUIRED (venus rejects split
+# mode's UBWC DPB -> HFI SESSION_ERROR 4103 -> ALL hw decode fails) but dead here;
+# it ships via vendor-fix/build_vendor_fixed.sh. vendor.video.disable.ubwc=1 was
+# deliberately NOT added: the display block does use UBWC, so a blanket disable is
+# untested and unwanted.
 PRODUCT_PROPERTY_OVERRIDES += \
     media.stagefright.thumbnail.prefer_hw_codecs=true \
     vendor.mm.enable.qcom_parser=4176895 \

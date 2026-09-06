@@ -149,3 +149,15 @@ vendor.audio.safx.pbe.enabled=true
 # they belong to QTI's Bluetooth stack, and this build runs AOSP's.
 vendor.qcom.bluetooth.soc=smd
 persist.bluetooth.a2dp_offload.disabled=true
+
+# Framework-side audio + DRM — absent from /vendor, which for these proves nothing:
+# their readers live on the system side, and all five strings are present in the
+# shipping system.img. af.* is AudioFlinger, audio.deep_buffer/offload.* are
+# AudioPolicyManager, drm.service.enabled gates the legacy drmserver (both the
+# service definition and /system/bin/drmserver are in the image). drm.service.enabled
+# is a presence check in AOSP rather than a value comparison — surdu's "1" is kept.
+af.fast_track_multiplier=1
+audio.deep_buffer.media=true
+audio.offload.min.duration.secs=30
+audio.offload.video=true
+drm.service.enabled=1

@@ -132,8 +132,13 @@ vendor.voice.path.for.pcm.voip=true
 #   persist.audio.dirac.speaker    lib/soundfx/libdirac.so
 #   vendor.audio.pp.asphere.enabled  lib{,64}/soundfx/libqcompostprocbundle.so
 #   vendor.audio.safx.pbe.enabled    lib{,64}/soundfx/libqcbassboost.so + postprocbundle
-# libdirac is Huawei's speaker voicing on this tablet, and it is gated on a persist.*
-# prop that this build never sets — see README.md on the clean-flash treble.
+# NOTE (checked on the tablet 2026-09-06): the clean-flash-treble hypothesis attached to
+# persist.audio.dirac.speaker is FALSE. /vendor/etc/audio_effects.xml declares the dirac
+# library and effect but has no <postprocess> section at all — only <preprocess> binding
+# aec+ns to voice_communication — so dirac is bound to no output stream, and libdirac.so
+# has zero mappings in audioserver. It cannot be shaping the default speaker sound.
+# The line stays only because the reader is real and the effect is UUID-instantiable by
+# an app; README.md's own explanation (BachSpeakerEQ wiped with /data) stands.
 persist.audio.dirac.speaker=true
 vendor.audio.pp.asphere.enabled=false
 vendor.audio.safx.pbe.enabled=true

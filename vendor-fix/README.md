@@ -148,9 +148,14 @@ Content, at comparable bitrate:
 | plain (`testsrc2`) | 6.085 Mbit/s | 101.0 |
 | busy (fractal zoom + cellular automaton + noise) | 8.105 Mbit/s | 79.6 |
 
-Since bitrate has been shown not to matter across 8-16 Mbit/s, this 1.27x is the
-content. The one codec comparison in the set, same content and bitrate: **HEVC costs
-1.256x AVC per frame** (busy 8M: hevc 79.6, avc 100.5).
+Bitrate was shown not to matter across 8-16 Mbit/s, so this 1.27x is content — with
+one caveat: the plain clip sits at 6.085 Mbit/s, *below* the range where the shelf was
+verified, so flatness from 6 to 8 is extrapolated rather than measured. One more clip
+(`testsrc2` at 8.1 Mbit/s) would close it. It does not affect anything practical: the
+margin below is measured directly on the worst case, not derived from this attribution.
+
+The one codec comparison in the set, same content and bitrate: **HEVC costs 1.256x AVC
+per frame** (busy 8M: hevc 79.6, avc 100.5).
 
 **Consequence for the declaration:** worst-case content decodes at ~80 fps against the
 60 that 1080p60 needs, and that margin does *not* erode with bitrate anywhere in the
@@ -176,6 +181,20 @@ Kept because the traps are distinct and the last one is the interesting one.
 The rule that would have prevented all four: **vary one factor and hold the rest.** A
 model fitted to points that move two variables at once is not evidence, however well it
 fits — and the better it fits, the more convincing the error looks.
+
+#### Open: which part of "content" costs the time
+
+That content and not bitrate sets the rate is measured. *Why* is not, and the same trap
+is available here. Reference-sample fetch, coding-unit count, and deblocking with SAO
+all scale with the picture and not with the bitrate, so all three fit these numbers
+equally well. Compatibility is not confirmation — a two-point fit "proved" the opposite
+of the truth one revision ago.
+
+One cheap experiment separates them: the busy clip re-encoded with `-bf 0`, same content
+and bitrate. Dropping bi-prediction roughly halves reference fetches and leaves CU count
+and the filters alone. If throughput jumps, it is memory; if not, it is CU work and
+filtering. One clip, one run. Not done — it changes nothing in the manifest — but the
+question is open, and that is the price of the answer.
 
 ### The DCVS explanation, and why it is dead
 

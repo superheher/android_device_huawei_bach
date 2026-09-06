@@ -176,3 +176,26 @@ Kept as-is deliberately. The alternative — dropping `performance-point-1920x10
 while keeping `blocks-per-second=489600` — would keep the decoder honestly described
 while telling players 1080p60 will not be smooth. That remains a one-line change if
 the dropped frames prove more objectionable than the frame-rate gain.
+
+### The DCVS explanation, and why it is dead
+
+hevc measured 75.7 fps before the declarations were flashed and 101.0 after, while avc
+-- whose declaration did not change in that flash -- measured 99.1 before and 100.5
+after. Commit 75152ed floated the idea that `blocks-per-second` might feed Venus DCVS
+and set the video clock, rather than only informing the player's choice, which would
+have made 75.7 a genuinely throttled measurement instead of a single-sample artefact.
+
+Testable without undoing the flash: set `KEY_OPERATING_RATE` explicitly and vary it on
+the same clip and decoder.
+
+    rate=none 100.4    rate=60  100.8
+    rate=15   100.5    rate=120 101.7
+    rate=30   101.0    rate=240 100.8
+
+A 16x range of requested rates moves throughput by 1.3%, which is run-to-run noise. If
+the clock followed the requested rate, `rate=15` would have throttled it. **The DCVS
+explanation is falsified.** The pre-flash 75.7 goes back to being what it always was:
+one sample, taken once.
+
+Worth keeping as a pattern: the hypothesis was cheap to kill because it predicted
+something specific and checkable that did not require reverting anything.

@@ -161,3 +161,6 @@ audio.deep_buffer.media=true
 audio.offload.min.duration.secs=30
 audio.offload.video=true
 drm.service.enabled=1
+
+# Time services — read by bin/time_daemon. Harmless if the daemon is not running.
+persist.vendor.delta_time.enable=true

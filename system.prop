@@ -63,29 +63,24 @@ persist.vendor.radio.apm_sim_not_pwdn=1
 persist.vendor.radio.custom_ecc=1
 persist.vendor.radio.rat_on=combine
 persist.vendor.radio.sib16_support=1
-persist.data.iwlan.enable=true
 
-# Data path — netmgrd carries the data calls on this legacy QCOM target, and cnd
-# is expected to run (BOARD_USES_QCNE := true in BoardConfig.mk). Without these the
-# modem can attach and read the SIM while data calls still fail, so they belong
-# with the rild.libpath fix rather than after it. docs/LOST-PROPS.md tier A1.
-ro.vendor.use_data_netmgrd=true
-persist.data.netmgrd.qos.enable=true
+# Data path — the two of surdu's six that a binary on this device actually reads:
+#   persist.vendor.data.mode  bin/qti (and netmgrd.rc, but only its "=disabled" branch)
+#   persist.vendor.cne.feature  bin/cnd, lib{,64}/libcne.so — cnd is expected to run
+#                               here, BOARD_USES_QCNE := true in BoardConfig.mk
 persist.vendor.data.mode=concurrent
 persist.vendor.cne.feature=1
-persist.vendor.dpm.feature=0
-persist.vendor.sys.cnd.iwlan=1
 
 # Singles from the same lost set (docs/LOST-PROPS.md tier A6).
 #   ro.frp.pst           PersistentDataBlockService stays disabled without it; the
 #                        partition exists (config -> mmcblk0p41 on this device).
-#   ro.gps.agps_provider AGPS.
 #   ro.vendor.extension_library  the framework's perf-hint client. The blob is present
 #                        (/vendor/lib{,64}/libqti-perfd-client.so); unset means no perfd
 #                        integration at all, which on 17.1 it had.
-#   wifi.interface       Wi-Fi already works, so this is belt-and-braces.
+#   wifi.interface       read by bin/hw/android.hardware.wifi@1.0-service, bin/lowi-server
+#                        and bin/imsdatadaemon. Wi-Fi already works, so belt-and-braces.
+# (ro.gps.agps_provider was in this group and was dropped — see the commit that removed it.)
 ro.frp.pst=/dev/block/bootdevice/by-name/config
-ro.gps.agps_provider=1
 ro.vendor.extension_library=libqti-perfd-client.so
 wifi.interface=wlan0
 

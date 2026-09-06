@@ -37,3 +37,21 @@ debug.sf.enable_gl_backpressure=1
 ro.config.media_vol_steps=15
 ro.config.vc_call_vol_steps=7
 sys.use_fifo_ui=1
+
+# Radio — the A10 vendor's /vendor/bin/hw/rild is started WITHOUT a "-l <lib>" argument
+# (/vendor/etc/init/rild.legacy.rc) and resolves the RIL library from rild.libpath alone.
+# With the prop unset it takes the "assume no-ril case" branch and sleeps forever:
+#     RILD: **RILd param count=1**  /  RILD: RIL_Init starting sleep loop
+# and no "rilInit completed" / "RIL_register completed" / "dlopen failed" ever follows —
+# so RILJ never connects, gsm.version.baseband and gsm.sim.state stay empty and the modem
+# looks dead while init.svc.ril-daemon reads "running".
+# On LOS 17.1 these lived in /system/build.prop (Q routed PRODUCT_PROPERTY_OVERRIDES to
+# ADDITIONAL_BUILD_PROPERTIES); flashing the A11 system dropped them, and vendor_prop.mk
+# cannot bring them back (orphaned, and /vendor is a prebuilt image we overwrite wholesale).
+# Values verified against a live BAH-L09 on surdu's 17.1; libril-qc-qmi-1.so is present in
+# the A10 vendor. Neither prop is persist.*, so a clean flash loses them unconditionally.
+rild.libpath=/vendor/lib64/libril-qc-qmi-1.so
+rild.libargs=-d /dev/smd0
+ril.subscription.types=NV,RUIM
+ro.telephony.use_old_mnc_mcc_format=true
+ro.telephony.call_ring.multiple=false

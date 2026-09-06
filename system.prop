@@ -102,12 +102,3 @@ vendor.display.perf_hint_window=50
 vendor.display.enable_default_color_mode=1
 ro.qualcomm.cabl=2
 ro.vendor.display.cabl=2
-
-# Gralloc UBWC (docs/LOST-PROPS.md tier A3, isolated for bisect). The display block
-# really does UBWC on this SoC -- SESSION-2026-08-30 records the MDSS rotator writing
-# Y_CBCR_420_VENUS_UBWC and the GPU target as RGBA_8888_UBWC. What venus rejects is the
-# UBWC *DPB of OPB/DPB split mode*, which vendor.vidc.disable.split.mode=1 already
-# handles in the vendor image. So enabling framebuffer UBWC is consistent with the
-# decode work, not in tension with it. gfx_ubwc_disable=0 is the default-shaped half.
-vendor.gralloc.enable_fb_ubwc=1
-debug.gralloc.gfx_ubwc_disable=0

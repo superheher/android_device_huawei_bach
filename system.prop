@@ -102,3 +102,16 @@ vendor.display.disable_skip_validate=1
 vendor.display.perf_hint_window=50
 vendor.display.enable_default_color_mode=1
 ro.vendor.display.cabl=2
+
+# USB — NOT a tuning: the legacy android_usb composition chain in the vendor's
+# init.qcom.usb.rc is keyed on the literal string "rndis,none".
+#     on property:sys.usb.config=rndis
+#         setprop sys.usb.config rndis,${persist.vendor.usb.config.extra}
+#     on property:sys.usb.config=rndis,none && property:sys.usb.configfs=0
+#         ... write functions rndis ... enable 1 ... setprop sys.usb.state rndis
+# With the prop unset the middle step yields "rndis," which matches no trigger, so
+# the rndis composition is never applied and USB tethering silently does nothing.
+# This device is on the legacy path (sys.usb.configfs=0 in the live dump), and the
+# "rndis,none,adb" variant breaks the same way. rps_mask is read as ${...} too.
+persist.vendor.usb.config.extra=none
+vendor.usb.rps_mask=0

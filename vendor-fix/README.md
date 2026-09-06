@@ -124,10 +124,21 @@ trade: the display path (portrait 1200x1920 panel, every landscape frame rotated
 difference is that the player can now see those drops in its own feedback and adapt,
 instead of being handed a number it ignored.
 
-Caveat on the 97 fps decoder benchmark that motivated 489600: it used a synthetic
-`testsrc2` clip, which decodes far more cheaply than real video. Real-world headroom
-is smaller than that figure suggests, which is why an 11% bitrate difference between
-two otherwise identical streams still shows up as ~50 vs ~60 fps.
+An earlier revision of this file cautioned that the 97 fps figure came from a
+synthetic `testsrc2` clip and therefore overstated real-world headroom. **Measurement
+disproved that.** Fed a deliberately hostile 1080p60 clip -- zooming Mandelbrot for
+fine detail and sub-pixel motion, a Replicator cellular automaton to defeat block
+merging, plus temporal noise, 1.7-2x heavier than `testsrc2` under a software decoder
+on x86 -- the hardware decoder returned 99.1 fps, marginally *faster* than the 97.2
+it gave on `testsrc2`. hevc behaves the same way: 75.7 fps on the plain clip, 75.9 on
+the busy one.
+
+So this decoder's throughput is essentially content-independent. It is pegged at a
+fixed rate per resolution regardless of how hard the bitstream is, which points at a
+fixed per-frame cost -- reference fetch bandwidth rather than parse arithmetic. That
+also means the ~50 vs ~60 fps gap between the two YouTube videos is *not* explained by
+decode complexity, and its cause remains unidentified; the display path, the network
+or the player's own adaptation are the remaining candidates.
 
 Kept as-is deliberately. The alternative — dropping `performance-point-1920x1080=60`
 while keeping `blocks-per-second=489600` — would keep the decoder honestly described

@@ -124,42 +124,53 @@ trade: the display path (portrait 1200x1920 panel, every landscape frame rotated
 difference is that the player can now see those drops in its own feedback and adapt,
 instead of being handed a number it ignored.
 
-Two revisions of this file were wrong about the synthetic-clip caveat, in opposite
-directions. The record, with the reasoning, because both errors have the same shape.
+### What this decoder is actually limited by
 
-**First** it warned that the synthetic `testsrc2` figure overstated real headroom.
-**Then** it retracted that, on the strength of one run per clip showing hevc at 75.7
-fps plain and 75.9 busy -- an apparent 1.00x gap -- and concluded throughput was
-content-independent. **That retraction was itself wrong.** Both conclusions came from
-single runs.
+This passage was wrong three times before it was right, in three different ways. The
+errors are kept because each is a distinct trap.
 
-Repeated four times, alternating, after the decoder declarations were flashed:
+1. It warned that a synthetic `testsrc2` clip overstated real headroom. Untested guess.
+2. It retracted that on one run per clip -- hevc 75.7 plain, 75.9 busy -- and declared
+   throughput content-independent. One run is not a measurement.
+3. It repeated the runs, got a stable 1.27x gap between plain and busy, and called that
+   a content effect. It is not. **Plain and busy differ in two variables at once**:
+   picture *and* bitrate, 6.085 vs 8.105 Mbit/s.
 
-| clip | runs | mean |
-|---|---|---|
-| hevc 1080p60 plain | 100.2 / 100.5 / 101.2 / 102.2 | 101.0 |
-| hevc 1080p60 busy | 79.4 / 79.5 / 79.6 / 79.4 | 79.5 |
-| avc 1080p60 busy | 99.0 / 100.1 / 101.3 / 101.5 | 100.5 |
+Measured, four alternating runs each, spread 0.3-2.5%:
 
-Spread within a clip is 0.3-2.5%, so these are solid. Content does matter: hevc is
-**1.27x** slower on the hostile clip. Less than the 1.97x the same pair costs a
-software decoder on x86, which is consistent with a fixed per-frame cost -- reference
-fetch bandwidth -- diluting the arithmetic difference rather than eliminating it.
+| clip | mean fps | nominal bitrate | bitstream throughput |
+|---|---|---|---|
+| hevc 1080p60 plain | 101.0 | 6.085 Mbit/s | 10.24 Mbit/s |
+| hevc 1080p60 busy | 79.5 | 8.105 Mbit/s | 10.74 Mbit/s |
+| avc 1080p60 busy | 100.5 | 8.053 Mbit/s | 13.49 Mbit/s |
 
-One thing this cannot settle. avc measured 99.1 fps before the flash and 100.5 after,
-unchanged, and its declaration did not change in that flash. hevc measured 75.7 before
-and 101.0 after, and its declaration did change (244800 -> 489600). That is suggestive
-of the declaration affecting the decoder's own configuration and not merely the
-player's choice, but the pre-flash figure is a single sample and the flash cannot be
-undone to re-measure, so it stays a hypothesis.
+hevc sustains the same bitstream rate either way, within 4.8%. The observed 1.27x fps
+gap is the 1.33x bitrate ratio, not the picture. **This decoder is bitrate-bound, not
+complexity-bound.**
 
-None of this changes the decision: worst-case content still decodes at 79.5 fps
-against the 60 that 1080p60 needs, so declaring it remains correct -- better supported
-now than when it was argued from the plain clip alone.
+The one controlled comparison here is avc busy against hevc busy -- same content, same
+bitrate, only the codec differs. **HEVC costs 1.256x more than AVC per bit on this
+hardware.** That number is worth keeping; the plain-vs-busy gap is not.
 
-The lesson is the one this session learned twice already: one run per condition is not
-a measurement. The YouTube comparison earlier the same day looked like a clean 2x
-difference until it was repeated, and then it was not.
+A two-point model of hevc (fixed cost per frame plus cost per bit) gives 1.83 ms/frame
+and 79.5 ns/bit, so 60 fps holds to about 11.2 Mbit/s, falling to ~56 fps at 12 and
+~43 at 16. Two points fit two parameters exactly, so this is a sketch, not a result --
+it needs a third point at a different bitrate.
+
+It does narrow the earlier claim. "79.5 fps worst case, 32% margin" is true at 8 Mbit/s
+and reads wider than it should. Stated properly: **the 1080p60 declaration is sound for
+HEVC up to roughly 11 Mbit/s, and above that the decoder will not hold 60.** For real
+1080p60 HEVC that is not an exotic bitrate, so the caveat is not theoretical. No
+manifest change follows from it -- `performance-point` cannot express a bitrate bound --
+but the limit should be on record.
+
+Method note, from the peer who produced the vectors: they had ranked the content on a
+software decoder on x86, where busy costs 1.97x plain. On this hardware the content
+effect is under 5%. Software profiling ranks clips; it does not predict this Venus.
+
+The recurring lesson is narrower than "repeat your runs", which this file already
+learned twice. It is: **before attributing a difference to a variable, check that it is
+the only one that changed.**
 
 Kept as-is deliberately. The alternative — dropping `performance-point-1920x1080=60`
 while keeping `blocks-per-second=489600` — would keep the decoder honestly described

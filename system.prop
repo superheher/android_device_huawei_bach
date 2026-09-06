@@ -137,3 +137,15 @@ vendor.voice.path.for.pcm.voip=true
 persist.audio.dirac.speaker=true
 vendor.audio.pp.asphere.enabled=false
 vendor.audio.safx.pbe.enabled=true
+
+# Bluetooth — the two of surdu's four with a confirmed reader.
+#   vendor.qcom.bluetooth.soc  lib{,64}/hw/vendor.qti.hardware.btconfigstore@1.0-impl.so
+#                              and lib64/hw/android.hardware.bluetooth@1.0-impl-qti.so
+#   persist.bluetooth.a2dp_offload.disabled  framework side (present in system.img);
+#                              this vendor cannot do A2DP offload, so leaving it unset
+#                              risks the stack advertising offload it cannot deliver.
+# ro.vendor.qualcomm.bt.hci_transport is not restored: it appears only in the vendor's
+# property_contexts, in no binary. persist.vendor.btstack.* likewise match nowhere —
+# they belong to QTI's Bluetooth stack, and this build runs AOSP's.
+vendor.qcom.bluetooth.soc=smd
+persist.bluetooth.a2dp_offload.disabled=true

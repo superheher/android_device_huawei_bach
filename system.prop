@@ -89,16 +89,16 @@ ro.gps.agps_provider=1
 ro.vendor.extension_library=libqti-perfd-client.so
 wifi.interface=wlan0
 
-# Display / SDM (docs/LOST-PROPS.md tier A3). Consumers verified present in the A10
-# vendor: libsdmcore.so, libsdm-color.so, hwcomposer.msm8937.so, libqdutils.so, and
-# for CABL libdisp-aba.so + vendor.display.postproc@1.0.so.
+# Display / SDM (docs/LOST-PROPS.md tier A3). Every name here was found by grepping
+# the vendor image for it, so each has a real reader on this device:
+#   vendor.display.*   -> lib{,64}/hw/hwcomposer.msm8937.so
+#   ro.vendor.display.cabl -> bin/mm-pp-dpps, lib{,64}/libsdmextension.so
 # disable_skip_validate is a correctness workaround on legacy SDM targets, not a
 # tuning: without it the composer skips a validate step it actually needs here.
-sdm.debug.disable_skip_validate=1
+# The pre-Treble spellings surdu also carried (sdm.debug.disable_skip_validate,
+# sdm.debug.disable_rotator_split, sdm.perf_hint_window, ro.qualcomm.cabl) appear in
+# no vendor binary on this device and are deliberately not restored.
 vendor.display.disable_skip_validate=1
-sdm.debug.disable_rotator_split=1
-sdm.perf_hint_window=50
 vendor.display.perf_hint_window=50
 vendor.display.enable_default_color_mode=1
-ro.qualcomm.cabl=2
 ro.vendor.display.cabl=2

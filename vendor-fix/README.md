@@ -94,3 +94,42 @@ first-draft "venus has no UBWC" wording. Functionally identical but not bit-repr
 prefer publishing a rebuild. Input must be pristine `/vendor`: the 2026-08-30 backup, or
 `vendor.img` from `lineage-18.1.0-bach-audittest.zip` plus the release's CIL allows (verified
 2026-08-31 to differ in `vendor_sepolicy.cil` alone).
+
+## Post-flash verification of the decoder declaration (2026-09-06)
+
+Two YouTube videos with identical formats (both itag 299, `avc1.64002A`,
+1920x1080@60; bitrates 5.79 and 5.22 Mbps), three alternating runs each, measured
+with `dumpsys SurfaceFlinger --timestats`:
+
+| run | "Format exceeds" warning | frames | dropped | avgFPS |
+|---|---|---|---|---|
+| old #1 | none | 706 | 37 | 44.05 |
+| new #1 | none | 1860 | 0 | 62.43 |
+| old #2 | none | 1615 | 66 | 53.78 |
+| new #2 | none | 1742 | 119 | 58.20 |
+| old #3 | none | 1575 | 70 | 52.36 |
+| new #3 | none | 1739 | 123 | 58.05 |
+
+The warning is gone in all six runs — the player is no longer operating on a
+declaration it had decided to ignore.
+
+The higher-bitrate video improved from ~30-47 fps to ~44-54. The lower-bitrate one
+stayed inside its previous spread (62.5 / 58.1 before). Alternating the order was
+necessary: single runs before the change gave 30.5 and 62.5, which looked like a
+clean two-fold difference and was not.
+
+Neither reaches a clean 60 — both now drop 4-7% of frames. That is the expected
+trade: the display path (portrait 1200x1920 panel, every landscape frame rotated
+270 degrees through the MDSS rotator) is what limits 1080p60, not the decoder. The
+difference is that the player can now see those drops in its own feedback and adapt,
+instead of being handed a number it ignored.
+
+Caveat on the 97 fps decoder benchmark that motivated 489600: it used a synthetic
+`testsrc2` clip, which decodes far more cheaply than real video. Real-world headroom
+is smaller than that figure suggests, which is why an 11% bitrate difference between
+two otherwise identical streams still shows up as ~50 vs ~60 fps.
+
+Kept as-is deliberately. The alternative — dropping `performance-point-1920x1080=60`
+while keeping `blocks-per-second=489600` — would keep the decoder honestly described
+while telling players 1080p60 will not be smooth. That remains a one-line change if
+the dropped frames prove more objectionable than the frame-rate gain.

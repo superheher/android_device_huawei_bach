@@ -132,3 +132,13 @@ vendor.audio.playback.mch.downsample=true
 vendor.audio.use.sw.alac.decoder=true
 vendor.audio.use.sw.ape.decoder=true
 vendor.voice.path.for.pcm.voip=true
+
+# Audio post-processing — readers confirmed in the vendor soundfx bundle:
+#   persist.audio.dirac.speaker    lib/soundfx/libdirac.so
+#   vendor.audio.pp.asphere.enabled  lib{,64}/soundfx/libqcompostprocbundle.so
+#   vendor.audio.safx.pbe.enabled    lib{,64}/soundfx/libqcbassboost.so + postprocbundle
+# libdirac is Huawei's speaker voicing on this tablet, and it is gated on a persist.*
+# prop that this build never sets — see README.md on the clean-flash treble.
+persist.audio.dirac.speaker=true
+vendor.audio.pp.asphere.enabled=false
+vendor.audio.safx.pbe.enabled=true

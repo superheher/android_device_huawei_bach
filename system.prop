@@ -75,3 +75,16 @@ persist.vendor.data.mode=concurrent
 persist.vendor.cne.feature=1
 persist.vendor.dpm.feature=0
 persist.vendor.sys.cnd.iwlan=1
+
+# Singles from the same lost set (docs/LOST-PROPS.md tier A6).
+#   ro.frp.pst           PersistentDataBlockService stays disabled without it; the
+#                        partition exists (config -> mmcblk0p41 on this device).
+#   ro.gps.agps_provider AGPS.
+#   ro.vendor.extension_library  the framework's perf-hint client. The blob is present
+#                        (/vendor/lib{,64}/libqti-perfd-client.so); unset means no perfd
+#                        integration at all, which on 17.1 it had.
+#   wifi.interface       Wi-Fi already works, so this is belt-and-braces.
+ro.frp.pst=/dev/block/bootdevice/by-name/config
+ro.gps.agps_provider=1
+ro.vendor.extension_library=libqti-perfd-client.so
+wifi.interface=wlan0

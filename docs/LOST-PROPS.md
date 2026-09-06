@@ -35,10 +35,14 @@ All 141 were verified present in a live `getprop` from a BAH-L09 running surdu's
 | kind | behaviour |
 |---|---|
 | non-`persist.` | gone the moment they leave `build.prop`. Every flash, every boot. Deterministic. |
-| `persist.` | gone too, in most cases. `PropertySet()` writes a `persist.` prop into `/data/property/persistent_properties` only when `persistent_properties_loaded == true`, and that is false during `PropertyLoadBootDefaults()`. So a prop that lived *only* in `build.prop` was never persisted to `/data`, and disappears with it. It survives an in-place 17.1 → 18.1 upgrade only if something wrote it at runtime — a HAL, the framework, a Settings toggle. Per prop, per device. |
+| `persist.` | gone too, in most cases. `PropertySet()` writes a `persist.` prop into `/data/property/persistent_properties` only when `persistent_properties_loaded == true`, and that is false during `PropertyLoadBootDefaults()`. So a prop that lived *only* in `build.prop` was never persisted to `/data`, and disappears with it. It survives an in-place 17.1 → 18.1 upgrade only if something wrote it at runtime — a HAL, the framework, a Settings toggle. **Measured on the tablet 2026-09-06: `/data/property/persistent_properties` holds 18 entries in total, and not one of the 141 is among them.** They are all gone, not "gone per device". |
 
-Which is why user reports disagree, while `rild.libpath` failed for everyone identically.
-To see what a given device still carries from 17.1:
+So the hedge that this varies per device turned out to be too generous to the `persist.`
+half: on a real upgraded tablet none of them survived. What does live in `/data/property`
+is what the framework wrote at runtime — `persist.sys.*`, `persist.sys.locale`,
+`persist.camera.gyro.disable` from the camera debugging, and so on.
+
+To check any other device:
 
 ```bash
 adb shell strings /data/property/persistent_properties | grep -E "^persist\." | sort
@@ -99,6 +103,18 @@ either — but a miss in *both* images, for a name with no `vendor.*`-spelled co
 is strong enough to leave the line out of a file whose whole point is that everything in
 it is load-bearing.
 
+> **Measurement trap, learned the hard way.** `getprop` run from a plain `adb shell` is in
+> the `shell` SELinux domain, which cannot **read** vendor-owned property types. It returns
+> an empty string and no error, and the denial only shows up in the audit log:
+> ```
+> avc: denied { read } for name="u:object_r:vendor_audio_prop:s0"
+>      scontext=u:r:shell:s0 tcontext=u:object_r:vendor_audio_prop:s0 tclass=file
+> ```
+> Checking the 44 restored props that way said 16 of 44 had landed and produced a
+> confident, wrong theory that `/system/build.prop` cannot set vendor-namespace names.
+> Re-run after `adb root` (context `u:r:su:s0`): **44 of 44, values exact.** Always verify
+> property state from a context that can read it.
+
 ---
 
 ## 4. What is now emitted (59)
@@ -147,28 +163,36 @@ on property:sys.usb.config=rndis,none && property:sys.usb.configfs=0
     write .../functions rndis   /   write .../enable 1   /   setprop sys.usb.state rndis
 ```
 
-An undefined property expands to empty in an init rc, so `sys.usb.config` becomes
-`rndis,` — matching no trigger. The composition is never written and tethering silently
-does nothing. This device is on the legacy path (`sys.usb.configfs=0` in the live dump),
-which is exactly what those triggers gate on.
+The mechanism is harsher than "expands to empty": init's `ExpandProps` treats an
+undefined property as an **error** and aborts the whole command. Reproduced on the tablet:
 
-### Open lead: the clean-flash speaker regression
-
-`README.md` attributes "a clean flash has the raw harsh-at-high-volume treble" to
-BachSpeakerEQ being wiped with `/data`. The prop loss has the same clean-flash signature
-and has never been tested. `soundfx/libdirac.so` — Huawei's speaker voicing on this
-tablet — reads `persist.audio.dirac.speaker`, which this build sets nowhere.
-
-A hypothesis, not a finding: libdirac may need more than one prop, and an effect that no
-`audio_effects.conf` entry instantiates will not run whatever the property says. Settled
-in one command while the loaner is here:
-
-```bash
-adb shell su -c 'setprop persist.audio.dirac.speaker true; killall audioserver'
+```
+init: Command 'setprop sys.usb.config rndis,${persist.vendor.usb.config.extra},adb'
+  action=sys.usb.config=rndis,adb && sys.usb.configfs=0 (init.qcom.usb.rc:838)
+  took 0ms and failed: property 'persist.vendor.usb.config.extra' doesn't exist
+  while expanding 'rndis,${persist.vendor.usb.config.extra},adb'
 ```
 
-`persist.vendor.audio.speaker.prot.enable` is ruled out of this question: the HAL blob
-does not read it.
+`sys.usb.config` therefore stays at `rndis,adb`, which matches no further trigger, the
+gadget `functions` node is never rewritten and `sys.usb.state` never becomes `rndis`.
+This device is on the legacy path (`sys.usb.configfs=0`), exactly what those triggers gate
+on.
+
+### Closed: the clean-flash speaker lead was wrong
+
+An earlier revision of this file proposed that the lost `persist.audio.dirac.speaker`
+explained what `README.md` attributes to BachSpeakerEQ being wiped with `/data` — the
+harsh treble after a clean flash. Tested on the tablet and **falsified**:
+
+- `/vendor/etc/audio_effects.xml` declares the dirac library and its effect uuid, but the
+  file has **no `<postprocess>` section at all**. Its only binding is `<preprocess>`
+  attaching `aec` and `ns` to `voice_communication`. Nothing binds dirac to an output.
+- `libdirac.so` has **zero mappings** in `audioserver`. It never loads.
+
+So the property cannot be shaping the default speaker voicing, and README.md's original
+explanation stands. `persist.vendor.audio.speaker.prot.enable` was already ruled out — the
+HAL blob does not read it. The dirac line stays in `system.prop` only because the reader is
+real and any app can instantiate the effect by uuid.
 
 ---
 
@@ -177,9 +201,11 @@ does not read it.
 **Already set by the vendor itself (2) — never lost.**
 `net.tcp.2g_init_rwnd` is `setprop`-ed by `init.qcom.rc`.
 `vendor.gralloc.enable_fb_ubwc` is derived by `init.qcom.early_boot.sh`, which probes the
-MDP and raises it only when `/sys/class/graphics/fb0/mdp/caps` reports ubwc — pre-setting
-it from build.prop would force framebuffer UBWC on hardware the probe deliberately
-excluded, while `vendor.gralloc.disable_ubwc` stayed 1.
+MDP and raises it only when `/sys/class/graphics/fb0/mdp/caps` reports ubwc. Confirmed on
+the tablet: `mdp/caps` **does** contain `ubwc`, and at runtime `enable_fb_ubwc=1` with
+`disable_ubwc=0` — already correct, with no help from us. Restoring it here would have been
+a redundant line on this hardware and a wrong one on any bach variant whose MDP does not
+advertise ubwc, where it would force framebuffer UBWC on while `disable_ubwc` stayed 1.
 
 **Held back for camera stability (5).** `camera.lowpower.record.enable`,
 `persist.camera.{HAL3.enabled,is_type}`, `vidc.enc.dcvs.extra-buff-count` are read by
@@ -264,14 +290,67 @@ comm -23 \
 It should print the 82 of §6 and nothing else. A name appearing that is not in that list
 means a prop was dropped without a reason being recorded.
 
-## 8. On-device verification still owed
+## 8. On-device verification (2026-09-06)
 
-Nothing in this file has been tested on hardware — the tree is the only thing that
-changed. In rough order of risk:
+Run on the BAH-L09 loaner (serial XMRNU18409101576) against the reporter's exact build,
+`eng.root.20260617.204056`. The 44 new `system.prop` lines were appended to the device's
+`/system/build.prop` behind a marker fence and the tablet cold-booted, so this exercises
+the real `TARGET_SYSTEM_PROP` path and not a runtime `setprop`.
 
-1. **Modem** — `getprop gsm.version.baseband`, `gsm.sim.state`, then a data call.
-2. **USB tethering** — `sys.usb.state` should reach `rndis` when tethering is enabled.
-3. **Display** — boot, wallpaper, rotation, video playback (the `disable_skip_validate`
-   and CABL changes).
-4. **Audio** — speaker treble on a clean flash, mic recording (fluence), offload playback.
-5. **Bluetooth** — A2DP to a headset, with offload now explicitly disabled.
+Note the tablet boots an **enforcing** kernel cmdline (`androidboot.selinux=enforcing`),
+from the 2026-06-18 enforcing session — not the permissive cmdline in the published
+`artifacts/los18-bach-a11-publish/boot.img`. Everything below therefore holds under
+enforcing.
+
+**Delivery.** 44 of 44 props set after a cold boot, values byte-exact against the tree,
+0 mismatches. Boot completed in ~25 s, `surfaceflinger` / `audioserver` / `system_server`
+all up, crash buffer empty, no init property errors.
+
+**Modem — fixed, and to parity with 17.1.** Before: `rild.libpath` empty and the `rild`
+process parked in `hrtimer_nanosleep`, i.e. literally the `sleep(UINT32_MAX)` of the
+no-ril branch. After:
+
+| | before | after |
+|---|---|---|
+| `rild` process state | `hrtimer_nanosleep` | `binder_ioctl` |
+| radio log | `RIL_Init starting sleep loop` | `RIL_Init argc = 5 clientId = 0` |
+| `gsm.version.baseband` | empty | `00022` |
+| `gsm.sim.state` | empty | `LOADED` |
+| `gsm.version.ril-impl` | empty | `Qualcomm RIL 1.0` |
+| `gsm.sim.operator.alpha` | empty | `Tele2` |
+
+Every value matches the 17.1 live dump exactly. RILJ is up and scanning — a WCDMA cell at
+level 4 in `RIL_REQUEST_GET_CELL_INFO_LIST`.
+
+One thing the fix cannot deliver here: the SIM does not register
+(`registrationState=DENIED rejectCause=13`, "roaming not allowed", a Russian Tele2 SIM on
+an MCC 257 network). That is **not** a regression — the 17.1 dump shows the same,
+`gsm.operator.numeric` empty and `gsm.network.type=Unknown`. So a data call could not be
+exercised, and the data-path props (`persist.vendor.data.mode`, `persist.vendor.cne.feature`)
+remain delivered-but-unexercised.
+
+**USB tethering — regression and fix both reproduced.** With the prop absent, init aborts
+the command outright (§5) and the gadget is never reconfigured: `functions=ffs`,
+`sys.usb.state=adb`, no `rndis0`. With it present from `build.prop`: `sys.usb.config`
+resolves to `rndis,none,adb`, `sys.usb.state=rndis,adb`, `functions=rndis_qc,ffs` and
+`/sys/class/net/rndis0` appears. Zero expansion failures on the second run.
+
+**Still not exercised.** Display (`disable_skip_validate`, CABL) and audio (fluence,
+offload) are delivered and the system is stable with them, but no A/B was run — the UI
+boots and renders, which is not the same as measuring composition or listening for a
+change. Bluetooth A2DP untested. The camera and encoder groups were deliberately not
+restored, so nothing to test there.
+
+**Device left in this state**, deliberately, so the tablet behaves like the fixed build:
+`/system/build.prop` carries the 44 lines between
+`# BEGIN device-tree system.prop verification` and `# END`, with the original saved as
+`/system/build.prop.claude-bak`. To revert:
+
+```bash
+adb root && adb shell 'mount -o rw,remount / && cp /system/build.prop.claude-bak /system/build.prop && mount -o ro,remount /'
+adb reboot
+```
+
+`persist.vendor.usb.config.extra=none` was also set at runtime during the test, so it now
+exists in `/data/property/persistent_properties` as well as in `build.prop`. Same value
+either way; a Format Data clears the `/data` copy.

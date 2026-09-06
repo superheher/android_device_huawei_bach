@@ -76,11 +76,31 @@ PropertyLoadBootDefaults():
 these — but anything that must beat a vendor value has to go through
 `vendor-fix/build_vendor_fixed.sh` instead.
 
-**Constraint 2 — namespace, in our favour.** `/system/build.prop` is parsed under
-`kInitContext`, not `kVendorContext`. So `system.prop` may legitimately carry `vendor.*`
-and `persist.vendor.*` names; a *vendor* build.prop could not carry system ones. Property
-**reads** are not gated either way, so a vendor HAL blob reads a name set from
-`/system/build.prop` exactly as it read it on 17.1.
+Measured on the tablet, not just read off the source: `ro.bach.proproute.probe` was
+written as `from-system` in `/system/build.prop` and `from-vendor` in
+`/vendor/build.prop`, and after a cold boot it reads **`from-vendor`**.
+
+**Constraint 2 — namespace is not a constraint at all.** `/system/build.prop` is parsed
+under `kInitContext` and `/vendor/build.prop` under `kVendorContext`, but
+`PropertyLoadBootDefaults()` funnels every accumulated pair through the internal
+`PropertySet()`, which has no SELinux gate. Both files carry both namespaces.
+
+Measured both directions on the tablet, because the guess in either direction is
+plausible and both would have been wrong:
+
+- all 44 props from `system.prop` — `vendor.*`, `persist.vendor.*`, `ro.vendor.*`
+  included — land byte-exact from `/system/build.prop`;
+- the same 44 land byte-exact from `/vendor/build.prop` with `system.prop` restored to
+  its original, including the system-owned types `rild.libpath` (`default_prop`),
+  `ro.frp.pst` (`exported_default_prop`) and `af.fast_track_multiplier`
+  (`exported3_default_prop`). The modem came up on that run with the RIL props present
+  **only** in `/vendor`.
+
+So the two routes are interchangeable in capability, and the only real asymmetry is
+Constraint 1. Choose by ownership and by cost: `system.prop` is free on every build,
+`vendor-fix/build_vendor_fixed.sh` costs a vendor.img re-issue but wins conflicts.
+
+Property **reads** are gated, which matters for checking your work — see the trap in §3.
 
 ---
 
@@ -114,6 +134,11 @@ it is load-bearing.
 > confident, wrong theory that `/system/build.prop` cannot set vendor-namespace names.
 > Re-run after `adb root` (context `u:r:su:s0`): **44 of 44, values exact.** Always verify
 > property state from a context that can read it.
+>
+> The same artifact bites `setenforce`. From a plain `adb shell` it returns
+> `Permission denied`, which reads like a locked-down device and nearly justified flashing
+> a permissive boot image to get write access to `/vendor`. From `u:r:su:s0` it just works,
+> and no flash was needed. Check the context before concluding the device is the problem.
 
 ---
 
@@ -340,6 +365,27 @@ offload) are delivered and the system is stable with them, but no A/B was run �
 boots and renders, which is not the same as measuring composition or listening for a
 change. Bluetooth A2DP untested. The camera and encoder groups were deliberately not
 restored, so nothing to test there.
+
+**Vendor route — verified, and no flash was needed.** A second run put all 44 props in
+`/vendor/build.prop` only, with `/system/build.prop` restored to its original, and cold
+booted back into enforcing. Result: 44 of 44 byte-exact, the modem up on RIL props living
+only in `/vendor`, zero crashes, zero `Could not set` failures from init. `/vendor` was
+then restored byte-for-byte from its backup (hash-checked) and the stray backup removed,
+so the partition is pristine at its original 43 lines.
+
+Getting write access to `/vendor` needed `setenforce 0` plus
+`nsenter -t 1 -m -- mount -o remount,rw /vendor`, both of which work from `u:r:su:s0`.
+The earlier "device is locked down, this needs a permissive boot flashed" conclusion was
+the §3 context artifact again.
+
+**Boot image on this tablet matches nothing on disk.** While preparing for that flash,
+every boot artifact in the tree was hash-compared against the partition over its own
+length — `artifacts/los18-bach-a11*/`, `at_boot_*.img`, `cur_boot.img`, `new_boot*.img`,
+`fresh_permissive_boot.img`, `boot-good-backup.img`. None matched. The running boot is a
+build that was flashed and not kept, so an 80 MB dump of `mmcblk0p35` is preserved at
+`artifacts/boot-as-flashed-20260906/` with restore instructions. Its cmdline carries
+`androidboot.selinux=enforcing`, which is why `README.md`'s "SELinux is permissive" no
+longer describes this device even though it still describes the published `boot.img`.
 
 **Device left in this state**, deliberately, so the tablet behaves like the fixed build:
 `/system/build.prop` carries the 44 lines between

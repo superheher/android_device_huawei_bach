@@ -21,6 +21,15 @@
 #      ART heap and GLES props (see device.mk, system.prop).
 # Real routes: system-context props -> system.prop; vendor-context props ->
 # vendor-fix/build_vendor_fixed.sh. Kept as a record of the upstream set.
+#
+# !! DO NOT bulk-restore from here. All 141 names below were audited one by one
+# against the shipping vendor.img and system.img: 59 have a reader and are now
+# emitted, 82 do not and are deliberately left out — including several that the
+# vendor's own init scripts already set, and several whose spelling this vendor
+# generation does not use. Two of the 141 were live bugs (a dead modem and dead
+# USB tethering). The full ledger, the method and the per-name reasons are in
+#     docs/LOST-PROPS.md
+# which also carries the regression check that re-derives the 82.
 
 # Audio
 PRODUCT_PROPERTY_OVERRIDES += \

@@ -115,3 +115,20 @@ ro.vendor.display.cabl=2
 # "rndis,none,adb" variant breaks the same way. rps_mask is read as ${...} too.
 persist.vendor.usb.config.extra=none
 vendor.usb.rps_mask=0
+
+# Audio HAL — every name below was found by strings(1) in lib{,64}/hw/audio.primary.msm8937.so,
+# the A10 blob this build still runs, so each has a confirmed reader. Unset, the HAL falls
+# back to its compiled-in defaults instead of the values it ran with on 17.1.
+persist.vendor.audio.fluence.voicecall=true
+persist.vendor.audio.fluence.speaker=true
+persist.vendor.audio.fluence.voicerec=true
+ro.vendor.audio.sdk.fluencetype=fluence
+ro.vendor.audio.sdk.ssr=false
+vendor.audio_hal.period_size=192
+vendor.audio.offload.buffer.size.kb=64
+vendor.audio.offload.gapless.enabled=true
+vendor.audio.offload.multiple.enabled=false
+vendor.audio.playback.mch.downsample=true
+vendor.audio.use.sw.alac.decoder=true
+vendor.audio.use.sw.ape.decoder=true
+vendor.voice.path.for.pcm.voip=true

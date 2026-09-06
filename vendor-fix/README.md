@@ -124,21 +124,42 @@ trade: the display path (portrait 1200x1920 panel, every landscape frame rotated
 difference is that the player can now see those drops in its own feedback and adapt,
 instead of being handed a number it ignored.
 
-An earlier revision of this file cautioned that the 97 fps figure came from a
-synthetic `testsrc2` clip and therefore overstated real-world headroom. **Measurement
-disproved that.** Fed a deliberately hostile 1080p60 clip -- zooming Mandelbrot for
-fine detail and sub-pixel motion, a Replicator cellular automaton to defeat block
-merging, plus temporal noise, 1.7-2x heavier than `testsrc2` under a software decoder
-on x86 -- the hardware decoder returned 99.1 fps, marginally *faster* than the 97.2
-it gave on `testsrc2`. hevc behaves the same way: 75.7 fps on the plain clip, 75.9 on
-the busy one.
+Two revisions of this file were wrong about the synthetic-clip caveat, in opposite
+directions. The record, with the reasoning, because both errors have the same shape.
 
-So this decoder's throughput is essentially content-independent. It is pegged at a
-fixed rate per resolution regardless of how hard the bitstream is, which points at a
-fixed per-frame cost -- reference fetch bandwidth rather than parse arithmetic. That
-also means the ~50 vs ~60 fps gap between the two YouTube videos is *not* explained by
-decode complexity, and its cause remains unidentified; the display path, the network
-or the player's own adaptation are the remaining candidates.
+**First** it warned that the synthetic `testsrc2` figure overstated real headroom.
+**Then** it retracted that, on the strength of one run per clip showing hevc at 75.7
+fps plain and 75.9 busy -- an apparent 1.00x gap -- and concluded throughput was
+content-independent. **That retraction was itself wrong.** Both conclusions came from
+single runs.
+
+Repeated four times, alternating, after the decoder declarations were flashed:
+
+| clip | runs | mean |
+|---|---|---|
+| hevc 1080p60 plain | 100.2 / 100.5 / 101.2 / 102.2 | 101.0 |
+| hevc 1080p60 busy | 79.4 / 79.5 / 79.6 / 79.4 | 79.5 |
+| avc 1080p60 busy | 99.0 / 100.1 / 101.3 / 101.5 | 100.5 |
+
+Spread within a clip is 0.3-2.5%, so these are solid. Content does matter: hevc is
+**1.27x** slower on the hostile clip. Less than the 1.97x the same pair costs a
+software decoder on x86, which is consistent with a fixed per-frame cost -- reference
+fetch bandwidth -- diluting the arithmetic difference rather than eliminating it.
+
+One thing this cannot settle. avc measured 99.1 fps before the flash and 100.5 after,
+unchanged, and its declaration did not change in that flash. hevc measured 75.7 before
+and 101.0 after, and its declaration did change (244800 -> 489600). That is suggestive
+of the declaration affecting the decoder's own configuration and not merely the
+player's choice, but the pre-flash figure is a single sample and the flash cannot be
+undone to re-measure, so it stays a hypothesis.
+
+None of this changes the decision: worst-case content still decodes at 79.5 fps
+against the 60 that 1080p60 needs, so declaring it remains correct -- better supported
+now than when it was argued from the plain clip alone.
+
+The lesson is the one this session learned twice already: one run per condition is not
+a measurement. The YouTube comparison earlier the same day looked like a clean 2x
+difference until it was repeated, and then it was not.
 
 Kept as-is deliberately. The alternative — dropping `performance-point-1920x1080=60`
 while keeping `blocks-per-second=489600` — would keep the decoder honestly described

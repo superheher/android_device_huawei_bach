@@ -294,6 +294,27 @@ members, since some look important:
 
 ---
 
+## 6b. How these actually ship (20260907)
+
+The tree says `system.prop`, but a released device gets them from `/vendor/build.prop`.
+
+That is not a preference — the from-source system image has not booted since June
+(`publish/BUILD_PROVENANCE.md`), so releases carry the proven Jun17 audittest system
+unchanged, and nothing appended to `system.prop` can reach a user. The `20260907` OTA
+therefore adds the 44-property block to the vendor image instead, with
+`publish-20260907/build_vendor_radio.sh` — `debugfs` only, no sudo, no loop mount, in the
+same style as `vendor-fix/build_vendor_fixed.sh`.
+
+Measured on the tablet, with `/system/build.prop` restored to the untouched original so the
+properties could only come from vendor: **44/44 byte-exact after a cold boot into enforcing**,
+modem up, USB tethering reconfiguring the gadget. Constraint 1 makes this safe to leave in
+place: `/vendor` wins duplicates, so once a from-source system boots and `system.prop` starts
+emitting these again, the identical vendor values win harmlessly. Remove the vendor block at
+that point — it is a source↔ship divergence, and it is recorded as one in
+`publish-20260907/BUILD_PROVENANCE.md`.
+
+---
+
 ## 7. Housekeeping
 
 `vendor_prop.mk` stays as the upstream record; its header points here. The two live

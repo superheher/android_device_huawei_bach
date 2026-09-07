@@ -36,10 +36,11 @@ the kernel ships prebuilt.
 | Audio | working. **Speaker:** a clean flash has the raw harsh-at-high-volume treble — the de-harsh fix is a separate rootless app (BachSpeakerEQ), **not yet bundled** in the ROM, so it must be installed and is wiped by a clean reflash. |
 
 **Caveats**
-- **SELinux is permissive** (`androidboot.selinux=permissive` in the kernel cmdline) — a bring-up
-  shortcut; enforcing is a TODO.
-- The camera `/vendor` overlays are applied by hand on the device for now; packaging them as a
-  flashable vendor-overlay is a TODO.
+- **SELinux is enforcing** since the `20260618` release (`androidboot.selinux=enforcing`). Earlier
+  builds ran permissive as a bring-up shortcut. Two device allows carry the reused A10 vendor:
+  `vndservicemanager → cameraserver` (binder) and the Huawei sensor HAL's oeminfo socket.
+- The camera `/vendor` overlays are **bundled** since `20260618` — the release is a self-contained
+  system + boot + vendor zip, clean-installable from a full wipe. No hand-application needed.
 - TWRP note: the system partition mounts at **`/system_root/system`**, not `/system`.
 
 ## Build
@@ -58,8 +59,19 @@ the kernel ships prebuilt.
    - Kernel ships **prebuilt** as `prebuilt/Image.gz-dtb` (the verified *v2fix* build) via
      `TARGET_PREBUILT_KERNEL`. To build from source instead, drop that line from `BoardConfig.mk`
      (source = the kernel repo above; `TARGET_KERNEL_CONFIG := bach_defconfig`).
-3. Flash `system` + `boot` over an existing LOS 17.1 install, then apply the camera `/vendor`
-   overlays + the stats-blob patch — see **[docs/CAMERA.md](docs/CAMERA.md)**.
+
+   > **Known issue — the from-source system image does not boot.** Since June 2026 a build from
+   > this tree hangs on the boot splash, in both permissive and enforcing variants. The boot
+   > ramdisk is byte-identical to the last known-good build and the vendor is unchanged, so the
+   > regression is in `system`; the cause is still unidentified and a full `m clobber` rebuild is
+   > the next experiment. **Published releases are therefore hand-assembled** from the last
+   > system image proven to boot — see `publish*/BUILD_PROVENANCE.md`. A consequence worth
+   > knowing: `system.prop` cannot reach a released device, so its properties are routed through
+   > `/vendor/build.prop` instead (both files deliver every namespace; `/vendor` wins duplicates).
+3. Flash the release zip in TWRP — it is self-contained (system + boot + vendor) and installs
+   over an existing build keeping `/data`, or from a full wipe. The camera `/vendor` overlays and
+   the stats-blob patch are already inside it; **[docs/CAMERA.md](docs/CAMERA.md)** documents what
+   they are and why.
 
 ## Camera (the hard part)
 
